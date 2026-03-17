@@ -39,13 +39,16 @@ class SignInView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        errors = serializer.errors
+        if "non_field_errors" in errors:
+            return Response(errors, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SignOutView(APIView):
     def post(self, request):
-        refresh = request.data.get("refresh")
-        if refresh == None:
+        refresh = request.data.get("refresh_token")
+        if not refresh:
             return Response(
                 {
                     "message": "Token không được để trống",
