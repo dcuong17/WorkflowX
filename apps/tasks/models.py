@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from apps.accounts.models import CustomUser
 from apps.workspaces.models import Workspace
 import uuid
@@ -10,6 +11,7 @@ class Task(models.Model):
     STATUS = [
         ("todo", "TODO"),
         ("in_progress", "IN PROGRESS"),
+        ("review", "REVIEW"),
         ("done", "DONE"),
     ]
 
@@ -33,5 +35,12 @@ class Task(models.Model):
     )
     status = models.CharField(max_length=20, choices=STATUS, default="todo")
     deadline = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["workspace", "status"]),
+            models.Index(fields=["assign_to", "status"]),
+        ]

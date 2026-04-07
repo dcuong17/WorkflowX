@@ -11,8 +11,15 @@ class Workspace(models.Model):
     created_by = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="workspaces"
     )
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_deleted", "created_at"]),
+            models.Index(fields=["created_by", "created_at"]),
+        ]
 
 
 class WorkspaceMember(models.Model):
@@ -34,3 +41,6 @@ class WorkspaceMember(models.Model):
 
     class Meta:
         unique_together = ("workspace", "user")
+        indexes = [
+            models.Index(fields=["workspace", "user"]),
+        ]

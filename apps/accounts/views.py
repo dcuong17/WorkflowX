@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt import tokens, token_blacklist
 from .serializers import SignUpSerializers, SignInSerializers
 from .models import CustomUser
@@ -8,6 +9,8 @@ from .models import CustomUser
 
 # Create your views here.
 class SignUpView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = SignUpSerializers(data=request.data)
         if serializer.is_valid():
@@ -25,6 +28,8 @@ class SignUpView(APIView):
 
 
 class SignInView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = SignInSerializers(data=request.data, context={"request": request})
         if serializer.is_valid():
@@ -46,6 +51,7 @@ class SignInView(APIView):
 
 
 class SignOutView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         refresh = request.data.get("refresh_token")
         if not refresh:
