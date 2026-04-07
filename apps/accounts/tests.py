@@ -66,6 +66,7 @@ class TestUserProfile:
         assert response.data == {
             "id": str(user.id),
             "email": "profile@example.com",
+            "username": "",
             "role": "member",
         }
 
@@ -85,6 +86,50 @@ class TestUserProfile:
         assert user.email == "after@example.com"
         assert user.role == "member"
         assert response.data["role"] == "member"
+
+    @pytest.mark.django_db
+    def test_update_profile_can_set_username(self, api_client):
+        user = CustomUser.objects.create_user("username@example.com", "securepass123")
+
+        response = api_client.put(
+            "/api/v1/auth/profile",
+            {"username": "cuong"},
+            format="json",
+            **auth_headers(user),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.username == "cuong"
+        assert response.data["username"] == "cuong"
+
+
+class TestUserDirectory:
+    @pytest.mark.django_db
+    def test_list_users_excludes_request_user_and_existing_workspace_members(self, api_client):
+        requester = CustomUser.objects.create_user("requester@example.com", "securepass123")
+        available = CustomUser.objects.create_user("available@example.com", "securepass123", username="available-user")
+        existing_member = CustomUser.objects.create_user("joined@example.com", "securepass123", username="joined-user")
+
+        from apps.workspaces.models import Workspace, WorkspaceMember
+
+        workspace = Workspace.objects.create(workspace_name="Dir Workspace", created_by=requester)
+        WorkspaceMember.objects.create(workspace=workspace, user=requester, role="manager")
+        WorkspaceMember.objects.create(workspace=workspace, user=existing_member, role="member")
+
+        response = api_client.get(
+            f"/api/v1/auth/users?workspace_id={workspace.workspace_id}",
+            **auth_headers(requester),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == [
+            {
+                "id": str(available.id),
+                "email": "available@example.com",
+                "username": "available-user",
+            }
+        ]
 
 
 class TestChangePassword:

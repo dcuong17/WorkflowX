@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import CustomUser
+from apps.tasks.models import Task
 from apps.workspaces.models import Workspace, WorkspaceMember
 
 
@@ -74,6 +75,34 @@ class TestWorkspaceAccess:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["workspace_name"] == "Core Workspace"
+
+    @pytest.mark.django_db
+    def test_retrieve_workspace_returns_task_metrics(self, api_client, workspace, owner):
+        assignee = CustomUser.objects.create_user("assignee@example.com", "securepass123")
+        WorkspaceMember.objects.create(workspace=workspace, user=assignee, role="member")
+        Task.objects.create(
+            workspace=workspace,
+            title="Done task",
+            assign_from=owner,
+            assign_to=assignee,
+            status="done",
+        )
+        Task.objects.create(
+            workspace=workspace,
+            title="Active task",
+            assign_from=owner,
+            assign_to=assignee,
+            status="in_progress",
+        )
+
+        response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/",
+            **auth_headers(owner),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total_tasks"] == 2
+        assert response.data["completed_tasks"] == 1
 
     @pytest.mark.django_db
     def test_outsider_cannot_retrieve_workspace(self, api_client, workspace, outsider):
@@ -152,6 +181,9 @@ class TestWorkspaceMembers:
 
     @pytest.mark.django_db
     def test_member_can_list_workspace_members(self, api_client, workspace, member_user, workspace_member):
+        member_user.username = "member-one"
+        member_user.save(update_fields=["username"])
+
         response = api_client.get(
             f"/api/v1/workspace/{workspace.workspace_id}/members/",
             **auth_headers(member_user),
@@ -159,6 +191,8 @@ class TestWorkspaceMembers:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2
+        member_entry = next(item for item in response.data if str(item["user"]) == str(member_user.id))
+        assert member_entry["user_username"] == "member-one"
 
     @pytest.mark.django_db
     def test_outsider_cannot_list_workspace_members(self, api_client, workspace, outsider):

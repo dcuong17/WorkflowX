@@ -66,7 +66,17 @@ def assigned_task(workspace, manager_user, member_user, member_membership):
 
 class TestTaskCreation:
     @pytest.mark.django_db
-    def test_manager_can_create_task_only_inside_workspace_for_member(self, api_client, workspace, manager_user, member_user, member_membership):
+    def test_manager_can_create_task_only_inside_workspace_and_assignment_is_optional(self, api_client, workspace, manager_user, member_user, member_membership):
+        unassigned_response = api_client.post(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/",
+            {
+                "title": "Draft Task",
+                "description": "Create before assigning",
+            },
+            format="json",
+            **auth_headers(manager_user),
+        )
+
         response = api_client.post(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/",
             {
@@ -78,6 +88,8 @@ class TestTaskCreation:
             **auth_headers(manager_user),
         )
 
+        assert unassigned_response.status_code == status.HTTP_201_CREATED
+        assert unassigned_response.data["assign_to"] is None
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "in_progress"
         task = Task.objects.get(id=response.data["id"])
@@ -125,6 +137,12 @@ class TestTaskCreation:
 class TestTaskAccessAndManagement:
     @pytest.mark.django_db
     def test_workspace_member_can_list_and_retrieve_tasks(self, api_client, workspace, member_user, member_membership, assigned_task):
+        member_user.username = "member-task"
+        member_user.save(update_fields=["username"])
+        manager = assigned_task.assign_from
+        manager.username = "manager-task"
+        manager.save(update_fields=["username"])
+
         list_response = api_client.get(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/",
             **auth_headers(member_user),
@@ -136,8 +154,10 @@ class TestTaskAccessAndManagement:
 
         assert list_response.status_code == status.HTTP_200_OK
         assert len(list_response.data) == 1
+        assert list_response.data[0]["assign_to_username"] == "member-task"
         assert detail_response.status_code == status.HTTP_200_OK
         assert detail_response.data["id"] == str(assigned_task.id)
+        assert detail_response.data["assign_from_username"] == "manager-task"
 
     @pytest.mark.django_db
     def test_outsider_cannot_list_or_retrieve_tasks(self, api_client, workspace, outsider, assigned_task):
@@ -191,7 +211,7 @@ class TestTaskAccessAndManagement:
 
 class TestTaskWorkflow:
     @pytest.mark.django_db
-    def test_assigned_member_submits_task_from_in_progress_to_in_review(self, api_client, workspace, member_user, assigned_task):
+    def test_assigned_member_must_upload_submission_before_submit(self, api_client, workspace, member_user, assigned_task):
         response = api_client.patch(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/status/",
             {"status": "in_review"},
@@ -199,9 +219,44 @@ class TestTaskWorkflow:
             **auth_headers(member_user),
         )
 
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.django_db
+    def test_assigned_member_submits_task_from_in_progress_to_in_review(self, api_client, workspace, member_user, assigned_task):
+        upload_response = api_client.post(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/submission/",
+            {
+                "submission_file": SimpleUploadedFile(
+                    "submission.docx",
+                    b"demo task content",
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
+            **auth_headers(member_user),
+        )
+        response = api_client.patch(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/status/",
+            {"status": "in_review"},
+            format="json",
+            **auth_headers(member_user),
+        )
+
+        assert upload_response.status_code == status.HTTP_200_OK
         assert response.status_code == status.HTTP_200_OK
         assigned_task.refresh_from_db()
         assert assigned_task.status == "in_review"
+        assert assigned_task.submission_file.name.endswith("submission.docx")
+
+    @pytest.mark.django_db
+    def test_submission_upload_rejects_invalid_file_type(self, api_client, workspace, member_user, assigned_task):
+        response = api_client.post(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/submission/",
+            {"submission_file": SimpleUploadedFile("notes.txt", b"invalid", content_type="text/plain")},
+            **auth_headers(member_user),
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "submission_file" in response.data
 
     @pytest.mark.django_db
     def test_other_member_cannot_submit_task_they_do_not_own(self, api_client, workspace, second_member_user, second_member_membership, assigned_task):
@@ -309,3 +364,4 @@ class TestTaskWorkflow:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+from django.core.files.uploadedfile import SimpleUploadedFile

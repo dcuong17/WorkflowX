@@ -701,3 +701,28 @@ The backend was audited and aligned with the required business workflow.
 ### Notes
 - Any earlier documentation in this file that mentions task statuses `todo` or `review` is obsolete and superseded by the workflow above.
 - Any earlier statement saying any workspace member can freely update task status is obsolete; status changes are now restricted by assignee and manager review responsibilities.
+
+## AWS Deployment Update (2026-04-07)
+
+The backend is now prepared for AWS deployment with MySQL and optional S3 media storage.
+
+### Production runtime
+- `Procfile` starts the app with `gunicorn`.
+- `workflow_api/settings.py` now supports `DATABASE_URL` for Amazon RDS MySQL.
+- `PyMySQL` is installed and registered as the Django MySQL driver to avoid native MySQL build issues in cloud deploys.
+
+### Production media storage
+- The backend supports optional S3 media storage through:
+  - `USE_S3`
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_STORAGE_BUCKET_NAME`
+  - `AWS_S3_REGION_NAME`
+  - `AWS_S3_CUSTOM_DOMAIN`
+  - `AWS_LOCATION`
+- When `USE_S3=False`, uploads still use local `MEDIA_ROOT`.
+
+### Recommended AWS architecture
+- App: AWS Elastic Beanstalk
+- Database: Amazon RDS MySQL
+- File uploads: Amazon S3

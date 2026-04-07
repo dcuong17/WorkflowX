@@ -5,6 +5,10 @@ from apps.workspaces.models import Workspace
 import uuid
 
 
+def task_submission_upload_to(instance, filename):
+    return f"task_submissions/{uuid.uuid4()}_{filename}"
+
+
 # Create your models here.
 class Task(models.Model):
 
@@ -34,6 +38,8 @@ class Task(models.Model):
     )
     status = models.CharField(max_length=20, choices=STATUS, default="in_progress")
     deadline = models.DateTimeField(null=True, blank=True)
+    submission_file = models.FileField(upload_to=task_submission_upload_to, null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

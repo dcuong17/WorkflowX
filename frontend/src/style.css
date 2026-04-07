@@ -1,12 +1,10 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color: #1f2937;
-  background:
-    radial-gradient(circle at top, rgba(194, 65, 12, 0.12), transparent 32%),
-    linear-gradient(180deg, #fffaf3 0%, #f5ecdf 100%);
+  background: #f7f9ff;
   font-family: "Segoe UI Variable", Tahoma, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,14 +19,46 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  background: #f7f9ff;
 }
 
 #app {
   min-height: 100vh;
 }
 
+.auth-blob {
+  position: absolute;
+  border-radius: 32%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-blob-one { inset: 5% auto auto -6%; height: 360px; width: 420px; transform: rotate(18deg); }
+.auth-blob-two { inset: auto -4% 8% auto; height: 440px; width: 400px; transform: rotate(16deg); }
+.auth-blob-three { inset: auto auto -8% 38%; height: 360px; width: 220px; transform: rotate(-8deg); }
+
+@layer components {
+  .auth-input {
+    @apply w-full rounded-2xl border border-slate-200 bg-[#f5f7fb] px-4 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#4f7df0] focus:bg-white focus:ring-4 focus:ring-[#4f7df0]/10;
+  }
+
+  .app-input {
+    @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#4f7df0] focus:ring-4 focus:ring-[#4f7df0]/10;
+  }
+}
+
 code {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.08);
   padding: 0.15rem 0.55rem;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.22s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) translateX(12px);
 }

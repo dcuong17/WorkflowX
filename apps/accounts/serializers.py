@@ -8,7 +8,7 @@ class SignUpSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "role", "password", "password_confirm"]
+        fields = ["id", "email", "username", "role", "password", "password_confirm"]
         read_only_fields = ["id", "role"]
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -17,6 +17,7 @@ class SignUpSerializers(serializers.ModelSerializer):
         user = CustomUser.objects.create_user(
             email=validated_data.get("email", ""),
             password=validated_data.get("password"),
+            username=validated_data.get("username", ""),
         )
         return user
 
@@ -29,6 +30,9 @@ class SignUpSerializers(serializers.ModelSerializer):
         if len(value) < 8:
             raise serializers.ValidationError("Password quá ngắn")
         return value
+
+    def validate_username(self, value):
+        return value.strip()
 
 
 class SignInSerializers(serializers.Serializer):
@@ -48,7 +52,7 @@ class SignInSerializers(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "role"]
+        fields = ["id", "email", "username", "role"]
         read_only_fields = ["id", "role"]
 
     def validate_email(self, value):
@@ -56,6 +60,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(email=value).exclude(pk=user.pk).exists():
             raise serializers.ValidationError("Email đã được sử dụng")
         return value
+
+    def validate_username(self, value):
+        return value.strip()
+
+
+class UserDirectorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "email", "username"]
 
 
 class ChangePasswordSerializer(serializers.Serializer):

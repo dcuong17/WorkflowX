@@ -28,6 +28,11 @@ urlpatterns = [
         name="task-status",
     ),
     path(
+        "<uuid:workspace_id>/tasks/<uuid:pk>/submission/",
+        TaskViewSet.as_view({"post": "submission"}),
+        name="task-submission",
+    ),
+    path(
         "<uuid:workspace_id>/members/",
         WorkspaceMemberViewSet.as_view(
             {

@@ -1,6 +1,7 @@
 ﻿from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
@@ -23,6 +24,7 @@ ALLOWED_TRANSITIONS = {
 @extend_schema(tags=["Tasks"])
 class TaskViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         return Task.objects.filter(
@@ -45,7 +47,7 @@ class TaskViewSet(ViewSet):
     @extend_schema(summary="List all tasks in a workspace")
     def list(self, request, workspace_id=None):
         self.ensure_workspace_member(workspace_id, request.user)
-        serializer = TaskSerializer(self.get_queryset(), many=True)
+        serializer = TaskSerializer(self.get_queryset(), many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(summary="Create a new task")
@@ -55,7 +57,7 @@ class TaskViewSet(ViewSet):
 
         serializer = TaskSerializer(
             data=request.data,
-            context={"workspace_id": self.kwargs["workspace_id"]},
+            context={"workspace_id": self.kwargs["workspace_id"], "request": request},
         )
         if serializer.is_valid():
             workspace = Workspace.objects.get(pk=self.kwargs["workspace_id"])
@@ -66,7 +68,7 @@ class TaskViewSet(ViewSet):
     def retrieve(self, request, workspace_id=None, pk=None):
         self.ensure_workspace_member(workspace_id, request.user)
         task = self.get_task(workspace_id, pk)
-        return Response(TaskSerializer(task).data, status=status.HTTP_200_OK)
+        return Response(TaskSerializer(task, context={"request": request}).data, status=status.HTTP_200_OK)
 
     def update(self, request, workspace_id=None, pk=None):
         if not IsWorkspaceManager().has_permission(request, self):
@@ -77,7 +79,7 @@ class TaskViewSet(ViewSet):
             task,
             data=request.data,
             partial=True,
-            context={"workspace_id": self.kwargs["workspace_id"]},
+            context={"workspace_id": self.kwargs["workspace_id"], "request": request},
         )
         if serializer.is_valid():
             serializer.save()
@@ -123,11 +125,39 @@ class TaskViewSet(ViewSet):
                 raise PermissionDenied("Chỉ member được giao task mới có quyền nộp bài")
             if task.assign_to_id != request.user.id:
                 raise PermissionDenied("Chỉ người được giao task mới có quyền nộp bài")
+            if not task.submission_file:
+                raise PermissionDenied("Member phải tải lên file Word hoặc Excel trước khi nộp bài")
+            task.submitted_at = timezone.now()
 
         if task.status == "in_review" and new_status in {"done", "in_progress"}:
             if member.role != "manager":
                 raise PermissionDenied("Chỉ manager mới có quyền duyệt hoặc từ chối task")
+            if new_status == "in_progress":
+                task.submitted_at = None
 
         task.status = new_status
-        task.save(update_fields=["status", "updated_at"])
-        return Response(TaskSerializer(task).data, status=status.HTTP_200_OK)
+        task.save(update_fields=["status", "submitted_at", "updated_at"])
+        return Response(TaskSerializer(task, context={"request": request}).data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Upload task submission file")
+    @action(methods=["post"], detail=True, url_path="submission")
+    def submission(self, request, workspace_id=None, pk=None):
+        member = self.ensure_workspace_member(workspace_id, request.user)
+        task = self.get_task(workspace_id, pk)
+
+        if member.role != "member":
+            raise PermissionDenied("Chỉ member được giao task mới có thể tải file lên")
+        if task.assign_to_id != request.user.id:
+            raise PermissionDenied("Chỉ người được giao task mới có thể tải file lên")
+
+        serializer = TaskSerializer(
+            task,
+            data={"submission_file": request.data.get("submission_file")},
+            partial=True,
+            context={"workspace_id": self.kwargs["workspace_id"], "request": request},
+        )
+        if serializer.is_valid():
+            serializer.save(submitted_at=None)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+from django.utils import timezone

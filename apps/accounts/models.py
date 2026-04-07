@@ -5,8 +5,8 @@ import uuid
 
 # Create your models here.
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password):
-        user = self.model(email=email)
+    def create_user(self, email, password, username=""):
+        user = self.model(email=email, username=username or "")
         user.email = self.normalize_email(email)
         user.set_password(password)
         user.save()
@@ -21,8 +21,8 @@ class CustomUser(AbstractUser):
     objects = CustomUserManager()
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     email = models.EmailField(unique=True)
+    username = models.CharField(max_length=150, blank=True, default="")
     role = models.CharField(max_length=25, choices=ROLE_CHOICES, default="member")
-    username = None
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 

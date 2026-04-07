@@ -20,29 +20,29 @@ class WorkspaceViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["workspace_name"]
 
-    def list(self, request):
-        workspace_ids = WorkspaceMember.objects.filter(user=request.user).values_list("workspace_id", flat=True)
-        workspaces = (
-            Workspace.objects.filter(pk__in=workspace_ids, is_deleted=False)
-            .distinct()
+    def _annotated_queryset(self):
+        return (
+            Workspace.objects.filter(is_deleted=False)
             .select_related("created_by")
             .prefetch_related("members")
             .annotate(
                 total_tasks=Count("tasks", filter=Q(tasks__is_deleted=False)),
-                completed_tasks=Count("tasks", filter=Q(tasks__status="done", tasks__is_deleted=False)),
+                completed_tasks=Count(
+                    "tasks",
+                    filter=Q(tasks__status="done", tasks__is_deleted=False),
+                ),
             )
         )
+
+    def list(self, request):
+        workspace_ids = WorkspaceMember.objects.filter(user=request.user).values_list("workspace_id", flat=True)
+        workspaces = self._annotated_queryset().filter(pk__in=workspace_ids).distinct()
         serializer = self.get_serializer(workspaces, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk=None):
         try:
-            workspace = (
-                Workspace.objects.filter(is_deleted=False)
-                .select_related("created_by")
-                .prefetch_related("members")
-                .get(pk=pk)
-            )
+            workspace = self._annotated_queryset().get(pk=pk)
         except Workspace.DoesNotExist:
             raise NotFound("Không có workspace này")
         is_member = WorkspaceMember.objects.filter(workspace=workspace, user=request.user).exists()
