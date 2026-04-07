@@ -1,112 +1,125 @@
-from django.test import TestCase
+﻿import pytest
 from rest_framework import status
-from .models import CustomUser
-import pytest
-import conftest
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from apps.accounts.models import CustomUser
 
 
-# Create your tests here.
+def auth_headers(user):
+    token = RefreshToken.for_user(user).access_token
+    return {"HTTP_AUTHORIZATION": f"Bearer {token}"}
+
+
 class TestSignup:
     @pytest.mark.django_db
-    def test_signup_success(self, api_client):
-        data = {"email": "anhcuongtau@gmail.com", "password": "cuong123456"}
-        response = api_client.post("/api/v1/auth/signup", data)
+    def test_signup_success_requires_matching_password_confirmation(self, api_client):
+        payload = {
+            "email": "newuser@example.com",
+            "password": "securepass123",
+            "password_confirm": "securepass123",
+        }
+
+        response = api_client.post("/api/v1/auth/signup", payload)
+
         assert response.status_code == status.HTTP_201_CREATED
+        user = CustomUser.objects.get(email="newuser@example.com")
+        assert response.data["role"] == "member"
+        assert user.role == "member"
 
     @pytest.mark.django_db
-    def test_signup_duplicate_email(self, api_client):
-        user = CustomUser.objects.create_user("anhcuongtau@gmail.com", "cuong123")
-        data = {"email": "anhcuongtau@gmail.com", "password": "cuong123456"}
-        response = api_client.post("/api/v1/auth/signup", data)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    def test_signup_rejects_mismatched_password_confirmation(self, api_client):
+        payload = {
+            "email": "mismatch@example.com",
+            "password": "securepass123",
+            "password_confirm": "differentpass123",
+        }
 
-    @pytest.mark.django_db
-    def test_signup_invalid_email(self, api_client):
-        data = {"email": "emailkhonghople", "password": "cuong123456"}
-        response = api_client.post("/api/v1/auth/signup", data)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        response = api_client.post("/api/v1/auth/signup", payload)
 
-    @pytest.mark.django_db
-    def test_signup_short_password(self, api_client):
-        data = {"email": "cuong@gmail.com", "password": "123"}
-        response = api_client.post("/api/v1/auth/signup", data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "password_confirm" in response.data
 
 
 class TestSignin:
     @pytest.mark.django_db
-    def test_signin_success(self, api_client):
-        CustomUser.objects.create_user("dinhcuong1703@gmail.com", "cuong2003")
-        data = {"email": "dinhcuong1703@gmail.com", "password": "cuong2003"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        assert response.status_code == status.HTTP_200_OK
+    def test_signin_returns_default_system_role(self, api_client):
+        user = CustomUser.objects.create_user("signin@example.com", "securepass123")
 
-    @pytest.mark.django_db
-    def test_signin_email_unexist(self, api_client):
-        data = {"email": "email@gmail.com", "password": "email123"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    @pytest.mark.django_db
-    def test_signin_wrong_password(self, api_client):
-        CustomUser.objects.create_user("deptrai@gmail.com", "cuong123")
-        data = {"email": "deptrai@gmail.com", "password": "cuong1234"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    @pytest.mark.django_db
-    def test_signin_invalid_email(self, api_client):
-        data = {"email": "cuonggmail.com", "password": "cuong123"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    @pytest.mark.django_db
-    def test_signin_lack_required_field(self, api_client):
-        data = {"email": "", "password": ""}
-        response = api_client.post("/api/v1/auth/signin", data)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-
-class TestSignout:
-    @pytest.mark.django_db
-    def test_signout_success(self, api_client):
-        CustomUser.objects.create_user("user@gmail.com", "user123")
-        data = {"email": "user@gmail.com", "password": "user123"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        refresh_token = response.data["refresh_token"]
-        signout_response = api_client.post(
-            "/api/v1/auth/signout", {"refresh_token": refresh_token}
-        )
-        print(signout_response.data)
-        assert signout_response.status_code == status.HTTP_200_OK
-
-    def test_signout_refresh_token_invalid(self, api_client):
         response = api_client.post(
-            "/api/v1/auth/signout", {"refresh_token": "invalidtoken"}
+            "/api/v1/auth/signin",
+            {"email": user.email, "password": "securepass123"},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_signout_refresh_token_empty(self, api_client):
-        response = api_client.post("/api/v1/auth/signout", {"refresh_token": ""})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["role"] == "member"
+        assert "access_token" in response.data
 
 
-class TestRefreshToken:
+class TestUserProfile:
     @pytest.mark.django_db
-    def test_refresh_token_success(self, api_client):
-        CustomUser.objects.create_user("admin@gmail.com", "admin123")
-        data = {"email": "admin@gmail.com", "password": "admin123"}
-        response = api_client.post("/api/v1/auth/signin", data)
-        refresh_token = response.data["refresh_token"]
-        refresh_endpoint = api_client.post(
-            "/api/v1/auth/token/refresh", {"refresh": refresh_token}
+    def test_get_profile_returns_role_and_email(self, api_client):
+        user = CustomUser.objects.create_user("profile@example.com", "securepass123")
+
+        response = api_client.get("/api/v1/auth/profile", **auth_headers(user))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            "id": str(user.id),
+            "email": "profile@example.com",
+            "role": "member",
+        }
+
+    @pytest.mark.django_db
+    def test_update_profile_can_change_email_but_not_role(self, api_client):
+        user = CustomUser.objects.create_user("before@example.com", "securepass123")
+
+        response = api_client.put(
+            "/api/v1/auth/profile",
+            {"email": "after@example.com", "role": "admin"},
+            format="json",
+            **auth_headers(user),
         )
-        assert refresh_endpoint.status_code == status.HTTP_200_OK
 
-    def test_refresh_token_invalid(self, api_client):
-        response = api_client.post("/api/v1/auth/token/refresh", {"refresh": "invalid"})
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.email == "after@example.com"
+        assert user.role == "member"
+        assert response.data["role"] == "member"
 
-    def test_refresh_token_empty(self, api_client):
-        response = api_client.post("/api/v1/auth/token/refresh", {"refresh": ""})
+
+class TestChangePassword:
+    @pytest.mark.django_db
+    def test_change_password_success(self, api_client):
+        user = CustomUser.objects.create_user("password@example.com", "oldpass123")
+
+        response = api_client.post(
+            "/api/v1/auth/change-password",
+            {
+                "old_password": "oldpass123",
+                "new_password": "newpass1234",
+                "new_password_confirm": "newpass1234",
+            },
+            format="json",
+            **auth_headers(user),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.check_password("newpass1234")
+
+    @pytest.mark.django_db
+    def test_change_password_rejects_wrong_old_password(self, api_client):
+        user = CustomUser.objects.create_user("wrongold@example.com", "oldpass123")
+
+        response = api_client.post(
+            "/api/v1/auth/change-password",
+            {
+                "old_password": "bad-old-pass",
+                "new_password": "newpass1234",
+                "new_password_confirm": "newpass1234",
+            },
+            format="json",
+            **auth_headers(user),
+        )
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST

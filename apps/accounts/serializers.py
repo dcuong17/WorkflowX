@@ -4,18 +4,26 @@ from django.contrib.auth import authenticate
 
 
 class SignUpSerializers(serializers.ModelSerializer):
+    password_confirm = serializers.CharField(write_only=True)
+
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "password"]
-        read_only_fields = ["id"]
+        fields = ["id", "email", "role", "password", "password_confirm"]
+        read_only_fields = ["id", "role"]
         extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
+        validated_data.pop("password_confirm")
         user = CustomUser.objects.create_user(
             email=validated_data.get("email", ""),
             password=validated_data.get("password"),
         )
         return user
+
+    def validate(self, data):
+        if data["password"] != data["password_confirm"]:
+            raise serializers.ValidationError({"password_confirm": "Mật khẩu xác nhận không khớp"})
+        return data
 
     def validate_password(self, value):
         if len(value) < 8:
@@ -35,3 +43,39 @@ class SignInSerializers(serializers.Serializer):
             return result
         else:
             raise serializers.ValidationError("Sai tên đăng nhập hoặc mật khẩu")
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "email", "role"]
+        read_only_fields = ["id", "role"]
+
+    def validate_email(self, value):
+        user = self.instance
+        if CustomUser.objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Email đã được sử dụng")
+        return value
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Mật khẩu xác nhận không khớp"}
+            )
+        if len(data["new_password"]) < 8:
+            raise serializers.ValidationError(
+                {"new_password": "Password quá ngắn"}
+            )
+        return data
+
+    def validate_old_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Mật khẩu cũ không đúng")
+        return value

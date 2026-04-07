@@ -9,9 +9,8 @@ import uuid
 class Task(models.Model):
 
     STATUS = [
-        ("todo", "TODO"),
         ("in_progress", "IN PROGRESS"),
-        ("review", "REVIEW"),
+        ("in_review", "IN REVIEW"),
         ("done", "DONE"),
     ]
 
@@ -33,7 +32,7 @@ class Task(models.Model):
         null=True,
         related_name="assigned_to_tasks",
     )
-    status = models.CharField(max_length=20, choices=STATUS, default="todo")
+    status = models.CharField(max_length=20, choices=STATUS, default="in_progress")
     deadline = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

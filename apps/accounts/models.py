@@ -14,9 +14,14 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser):
+    ROLE_CHOICES = [
+        ("member", "MEMBER"),
+    ]
+
     objects = CustomUserManager()
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     email = models.EmailField(unique=True)
+    role = models.CharField(max_length=25, choices=ROLE_CHOICES, default="member")
     username = None
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

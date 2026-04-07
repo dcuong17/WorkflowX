@@ -74,7 +74,15 @@ class WorkspaceViewSet(ModelViewSet):
 class WorkspaceMemberViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
+    def _ensure_workspace_member(self, user, workspace_id):
+        if not WorkspaceMember.objects.filter(
+            workspace_id=workspace_id,
+            user=user,
+        ).exists():
+            raise PermissionDenied("KhÃ´ng cÃ³ quyá»n truy cáº­p workspace nÃ y")
+
     def list(self, request, workspace_id=None):
+        self._ensure_workspace_member(request.user, self.kwargs["workspace_id"])
         workspace_members = WorkspaceMember.objects.filter(
             workspace=self.kwargs["workspace_id"]
         ).select_related("user")

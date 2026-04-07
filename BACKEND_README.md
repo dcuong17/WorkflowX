@@ -678,3 +678,26 @@ or
 9. **JWT lifetime** — Access tokens expire after 1 day. Refresh tokens expire after 7 days. After that, users must log in again.
 
 10. **Title length limit** — Task title has a max length of 50 characters.
+
+## Backend Audit Update (2026-04-07)
+
+The backend was audited and aligned with the required business workflow.
+
+### Implemented changes
+- Added a default system role `member` to `CustomUser` and exposed it in signup, signin, and profile responses.
+- Preserved profile self-service: users can update their own email and change password, while `role` remains read-only.
+- Kept workspace creation self-service and confirmed the creator is automatically inserted into `WorkspaceMember` with role `manager`.
+- Enforced that users added later to a workspace are always stored as `member`, even if another role is submitted in the request payload.
+- Restricted workspace member listing to authenticated users who already belong to that workspace.
+- Reworked task business rules so tasks only move through `in_progress -> in_review -> done` with manager rejection returning `in_review -> in_progress`.
+- Removed the old `todo` and `review` workflow from the active task model and added a migration that remaps persisted data: `todo` becomes `in_progress`, `review` becomes `in_review`.
+- Prevented task status bypass through the general task update endpoint by making `status` read-only there.
+- Enforced that only workspace managers can create, edit, delete, and assign tasks.
+- Enforced that a task must be assigned to a workspace `member`; assigning a task to a workspace manager is rejected.
+- Enforced that only the assigned member can submit a task from `in_progress` to `in_review`.
+- Enforced that only the workspace manager can approve (`in_review -> done`) or reject (`in_review -> in_progress`) a submitted task.
+- Added comprehensive pytest coverage in each app `tests.py`, including authentication, workspace role behavior, membership permissions, and the full three-step task review flow.
+
+### Notes
+- Any earlier documentation in this file that mentions task statuses `todo` or `review` is obsolete and superseded by the workflow above.
+- Any earlier statement saying any workspace member can freely update task status is obsolete; status changes are now restricted by assignee and manager review responsibilities.

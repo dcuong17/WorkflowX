@@ -1,7 +1,9 @@
+﻿from django.utils import timezone
 from rest_framework import serializers
-from django.utils import timezone
-from .models import Task
+
 from apps.workspaces.models import WorkspaceMember
+
+from .models import Task
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -23,19 +25,34 @@ class TaskSerializer(serializers.ModelSerializer):
             "id",
             "workspace",
             "assign_from",
+            "status",
             "created_at",
             "updated_at",
         ]
 
+    def validate(self, attrs):
+        assign_to = attrs.get("assign_to")
+        if self.instance is None and assign_to is None:
+            raise serializers.ValidationError(
+                {"assign_to": "Task phải được giao cho một member trong workspace"}
+            )
+        return attrs
+
     def validate_assign_to(self, value):
         if value is None:
             return value
+
         workspace_id = self.context.get("workspace_id")
-        is_member = WorkspaceMember.objects.filter(
-            workspace_id=workspace_id, user=value
-        ).exists()
-        if not is_member:
+        try:
+            membership = WorkspaceMember.objects.get(
+                workspace_id=workspace_id,
+                user=value,
+            )
+        except WorkspaceMember.DoesNotExist:
             raise serializers.ValidationError("Member không tồn tại trong workspace")
+
+        if membership.role != "member":
+            raise serializers.ValidationError("Task chỉ có thể giao cho member trong workspace")
         return value
 
     def validate_deadline(self, value):
