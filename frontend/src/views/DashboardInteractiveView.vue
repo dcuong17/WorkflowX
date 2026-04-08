@@ -182,19 +182,23 @@ onMounted(async () => {
 
 const flattenedTasks = computed(() => taskStore.allTasks)
 const createdCount = computed(() => workspaceStore.workspaces.filter((workspace) => workspace.created_by === authStore.user?.id).length)
-const isManagerView = computed(() => createdCount.value > 0)
+const assignedByMeTasks = computed(() => flattenedTasks.value.filter((task) => task.assign_from === authStore.user?.id))
+const assignedToMeTasks = computed(() => flattenedTasks.value.filter((task) => task.assign_to === authStore.user?.id))
+const relatedTasks = computed(() => {
+  const uniqueTasks = new Map()
 
-const scopedTasks = computed(() => {
-  if (isManagerView.value) {
-    return flattenedTasks.value.filter((task) => task.assign_from === authStore.user?.id)
+  for (const task of [...assignedByMeTasks.value, ...assignedToMeTasks.value]) {
+    uniqueTasks.set(task.id, task)
   }
-  return flattenedTasks.value.filter((task) => task.assign_to === authStore.user?.id)
+
+  return [...uniqueTasks.values()]
 })
+const isManagerView = computed(() => createdCount.value > 0 && assignedToMeTasks.value.length === 0)
 
-const completedTaskList = computed(() => scopedTasks.value.filter((task) => task.status === 'done'))
-const reviewTaskList = computed(() => scopedTasks.value.filter((task) => task.status === 'in_review'))
+const completedTaskList = computed(() => relatedTasks.value.filter((task) => task.status === 'done'))
+const reviewTaskList = computed(() => relatedTasks.value.filter((task) => task.status === 'in_review'))
 
-const filteredTasks = computed(() => scopedTasks.value.filter((task) => matchesSearch([
+const filteredTasks = computed(() => relatedTasks.value.filter((task) => matchesSearch([
   task.title,
   task.description,
   task.status,
@@ -219,12 +223,24 @@ const statCards = computed(() => {
   const completed = completedTaskList.value.length
   const inReview = reviewTaskList.value.length
   const workspaceCount = isManagerView.value ? createdCount.value : workspaceStore.workspaces.length
+  const taskLabel = assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0
+    ? 'Related Tasks'
+    : (assignedByMeTasks.value.length > 0 ? 'Assigned Tasks' : 'My Tasks')
+  const taskHelper = assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0
+    ? 'Tong task ban giao hoac duoc giao'
+    : (assignedByMeTasks.value.length > 0 ? 'So task ban da giao cho team' : 'So task dang duoc giao cho ban')
+  const reviewLabel = assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0
+    ? 'Review Queue'
+    : (assignedByMeTasks.value.length > 0 ? 'Need Review' : 'Waiting Review')
+  const reviewHelper = assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0
+    ? 'Task lien quan dang o trang thai cho duyet'
+    : (assignedByMeTasks.value.length > 0 ? 'Task dang cho ban duyet' : 'Task ban da gui dang cho duyet')
 
   return [
     { type: 'workspaces', label: isManagerView.value ? 'Managed Workspaces' : 'Related Workspaces', value: workspaceCount, helper: isManagerView.value ? 'Workspace do ban tao va quan ly' : 'Workspace ban dang tham gia', tone: 'blue', icon: '?' },
-    { type: 'assigned', label: isManagerView.value ? 'Assigned Tasks' : 'My Tasks', value: scopedTasks.value.length, helper: isManagerView.value ? 'So task ban da giao cho team' : 'So task dang duoc giao cho ban', tone: 'amber', icon: '?' },
+    { type: 'assigned', label: taskLabel, value: relatedTasks.value.length, helper: taskHelper, tone: 'amber', icon: '?' },
     { type: 'completed', label: 'Completed Tasks', value: completed, helper: 'Tong so task da hoan thanh', tone: 'green', icon: '?' },
-    { type: 'review', label: isManagerView.value ? 'Need Review' : 'Waiting Review', value: inReview, helper: isManagerView.value ? 'Task dang cho ban duyet' : 'Task ban da gui dang cho duyet', tone: 'coral', icon: '?' },
+    { type: 'review', label: reviewLabel, value: inReview, helper: reviewHelper, tone: 'coral', icon: '?' },
   ]
 })
 
@@ -236,7 +252,7 @@ const activeModal = computed(() => {
       empty: createdWorkspaces.value.length + joinedWorkspaces.value.length === 0,
     },
     assigned: {
-      title: isManagerView.value ? 'Assigned Tasks' : 'My Tasks',
+      title: assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0 ? 'Related Tasks' : (assignedByMeTasks.value.length > 0 ? 'Assigned Tasks' : 'My Tasks'),
       description: 'Danh sach task trong pham vi lam viec hien tai cua ban.',
       items: filteredTasks.value,
       empty: filteredTasks.value.length === 0,
@@ -248,7 +264,7 @@ const activeModal = computed(() => {
       empty: filteredTasks.value.filter((task) => task.status === 'done').length === 0,
     },
     review: {
-      title: isManagerView.value ? 'Need Review' : 'Waiting Review',
+      title: assignedByMeTasks.value.length > 0 && assignedToMeTasks.value.length > 0 ? 'Review Queue' : (assignedByMeTasks.value.length > 0 ? 'Need Review' : 'Waiting Review'),
       description: 'Cac task dang o trang thai cho duyet.',
       items: filteredTasks.value.filter((task) => task.status === 'in_review'),
       empty: filteredTasks.value.filter((task) => task.status === 'in_review').length === 0,
