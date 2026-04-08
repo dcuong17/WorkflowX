@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       <button
         v-for="card in statCards"
         :key="card.label"
@@ -79,10 +79,15 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="task in recentTasks" :key="task.id" class="border-b border-slate-100 last:border-b-0">
+            <tr
+              v-for="task in recentTasks"
+              :key="task.id"
+              class="cursor-pointer border-b border-slate-100 transition hover:bg-[#fbfcff] last:border-b-0"
+              @click="openTask(task)"
+            >
               <td class="px-4 py-4 font-medium text-slate-900">{{ task.title }}</td>
               <td class="px-4 py-4 text-slate-500">{{ workspaceName(task.workspace) }}</td>
-              <td class="px-4 py-4 text-slate-500">{{ task.assign_to_username || task.assign_to || 'Unassigned' }}</td>
+              <td class="px-4 py-4 text-slate-500">{{ displayUser(task.assign_to_username, task.assign_to, 'Unassigned') }}</td>
               <td class="px-4 py-4 text-slate-500">{{ formatDate(task.deadline) }}</td>
               <td class="px-4 py-4"><TaskStatusBadge :status="task.status" /></td>
             </tr>
@@ -140,7 +145,7 @@
               <div class="min-w-0">
                 <p class="text-base font-semibold text-slate-900">{{ task.title }}</p>
                 <p class="mt-1 text-sm text-slate-500">Workspace: {{ workspaceName(task.workspace) }}</p>
-                <p class="mt-1 text-sm text-slate-500">Assignee: {{ task.assign_to_username || task.assign_to || 'Unassigned' }}</p>
+                <p class="mt-1 text-sm text-slate-500">Assignee: {{ displayUser(task.assign_to_username, task.assign_to, 'Unassigned') }}</p>
               </div>
               <TaskStatusBadge :status="task.status" />
             </div>
@@ -218,6 +223,7 @@ const createdWorkspaces = computed(() => filteredWorkspaces.value.filter((worksp
 const joinedWorkspaces = computed(() => filteredWorkspaces.value.filter((workspace) => workspace.created_by !== authStore.user?.id))
 const recentTasks = computed(() => filteredTasks.value.slice(0, 6))
 const workspaceHighlights = computed(() => filteredWorkspaces.value.slice(0, 6))
+const myAssignedTasks = computed(() => filteredTasks.value.filter((task) => task.assign_to === authStore.user?.id))
 
 const statCards = computed(() => {
   const completed = completedTaskList.value.length
@@ -239,6 +245,7 @@ const statCards = computed(() => {
   return [
     { type: 'workspaces', label: isManagerView.value ? 'Managed Workspaces' : 'Related Workspaces', value: workspaceCount, helper: isManagerView.value ? 'Workspace do ban tao va quan ly' : 'Workspace ban dang tham gia', tone: 'blue', icon: '?' },
     { type: 'assigned', label: taskLabel, value: relatedTasks.value.length, helper: taskHelper, tone: 'amber', icon: '?' },
+    { type: 'my-assigned', label: 'Tasks For Me', value: assignedToMeTasks.value.length, helper: 'Task dang va da duoc giao truc tiep cho ban', tone: 'purple', icon: '?' },
     { type: 'completed', label: 'Completed Tasks', value: completed, helper: 'Tong so task da hoan thanh', tone: 'green', icon: '?' },
     { type: 'review', label: reviewLabel, value: inReview, helper: reviewHelper, tone: 'coral', icon: '?' },
   ]
@@ -256,6 +263,12 @@ const activeModal = computed(() => {
       description: 'Danh sach task trong pham vi lam viec hien tai cua ban.',
       items: filteredTasks.value,
       empty: filteredTasks.value.length === 0,
+    },
+    'my-assigned': {
+      title: 'Tasks Assigned To You',
+      description: 'Danh sach task dang va da duoc giao truc tiep cho tai khoan hien tai.',
+      items: myAssignedTasks.value,
+      empty: myAssignedTasks.value.length === 0,
     },
     completed: {
       title: 'Completed Tasks',
@@ -292,11 +305,15 @@ function workspaceName(workspaceId) {
   return workspaceStore.workspaces.find((workspace) => workspace.workspace_id === workspaceId)?.workspace_name || workspaceId
 }
 
+function displayUser(username, fallbackId, empty = 'Unknown') {
+  return username || fallbackId || empty
+}
+
 function creatorName(workspace) {
   if (workspace.created_by === authStore.user?.id) {
-    return authStore.user?.username || authStore.user?.email || workspace.created_by
+    return displayUser(authStore.user?.username, workspace.created_by, authStore.user?.email || workspace.created_by)
   }
-  return workspace.created_by_username || workspace.created_by
+  return displayUser(workspace.created_by_username, workspace.created_by)
 }
 
 function formatDate(value) {

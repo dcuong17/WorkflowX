@@ -88,7 +88,7 @@
           </select>
         </label>
         <p v-if="selectedCandidate" class="rounded-[20px] bg-[#f7f9ff] px-4 py-3 text-sm text-slate-500">
-          UUID: <span class="font-medium text-slate-900">{{ selectedCandidate.id }}</span>
+          Selected user: <span class="font-medium text-slate-900">{{ selectedCandidate.username || selectedCandidate.id }}</span>
         </p>
         <p v-if="memberError" class="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{{ memberError }}</p>
         <div class="flex justify-end gap-3"><BaseButton variant="secondary" @click="closeAddMemberModal">Cancel</BaseButton><BaseButton type="submit">Add Member</BaseButton></div>

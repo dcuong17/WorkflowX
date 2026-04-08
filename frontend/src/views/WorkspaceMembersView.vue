@@ -13,8 +13,8 @@
         <thead>
           <tr class="bg-[#f3f6fd] text-slate-500">
             <th class="rounded-l-2xl px-4 py-3 font-medium">Membership ID</th>
+            <th class="px-4 py-3 font-medium">User</th>
             <th class="px-4 py-3 font-medium">Username</th>
-            <th class="px-4 py-3 font-medium">User ID</th>
             <th class="px-4 py-3 font-medium">Role</th>
             <th class="px-4 py-3 font-medium">Joined</th>
             <th class="rounded-r-2xl px-4 py-3 font-medium">Action</th>
@@ -23,8 +23,8 @@
         <tbody>
           <tr v-for="member in filteredMembers" :key="member.id" class="border-b border-slate-100 last:border-b-0">
             <td class="px-4 py-4 font-medium text-slate-900">{{ member.id }}</td>
-            <td class="px-4 py-4 text-slate-700">{{ member.user_username || '-' }}</td>
-            <td class="px-4 py-4 text-slate-500">{{ member.user }}</td>
+            <td class="px-4 py-4 text-slate-700">{{ member.user_username || member.user }}</td>
+            <td class="px-4 py-4 text-slate-500">{{ member.user_username || '-' }}</td>
             <td class="px-4 py-4"><span class="rounded-full px-3 py-1 text-xs font-semibold" :class="member.role === 'manager' ? 'bg-[#eef3ff] text-[#4f7df0]' : 'bg-[#e8fbf2] text-[#18b16d]'">{{ member.role }}</span></td>
             <td class="px-4 py-4 text-slate-500">{{ new Date(member.joined_at).toLocaleString('en-GB') }}</td>
             <td class="px-4 py-4"><BaseButton v-if="isManager && member.role !== 'manager'" size="sm" variant="danger" @click="workspaceStore.removeMember(id, member.id)">Remove</BaseButton></td>

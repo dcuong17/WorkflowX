@@ -29,6 +29,7 @@ const palettes = {
   green: { iconBg: 'bg-[#ebfbf3] text-[#18b16d]', trend: 'text-[#18b16d]' },
   amber: { iconBg: 'bg-[#fff5e8] text-[#f59e0b]', trend: 'text-[#f59e0b]' },
   coral: { iconBg: 'bg-[#fff1ef] text-[#f9736a]', trend: 'text-[#f9736a]' },
+  purple: { iconBg: 'bg-[#f4efff] text-[#7c4dff]', trend: 'text-[#7c4dff]' },
 }
 
 const iconBg = computed(() => palettes[props.tone]?.iconBg ?? palettes.blue.iconBg)
