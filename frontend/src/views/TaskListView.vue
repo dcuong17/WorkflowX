@@ -68,15 +68,14 @@
                   <p class="text-sm font-medium text-slate-700">Submission file</p>
                   <p class="mt-1 text-sm text-slate-500">{{ task.submission_file_name || 'Chưa có file đính kèm' }}</p>
                 </div>
-                <a
-                  v-if="task.submission_file_url"
-                  :href="task.submission_file_url"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  v-if="task.submission_file_name"
+                  type="button"
+                  @click="handleDownload(task)"
                   class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                 >
                   View file
-                </a>
+                </button>
               </div>
 
               <form v-if="canUpload(task)" class="mt-4 space-y-3" @submit.prevent="handleInlineUpload(task.id)">
@@ -257,5 +256,11 @@ async function handleApprove(taskId) {
 async function handleReject(taskId) {
   if (!selectedWorkspaceId.value) return
   await taskStore.rejectTask(selectedWorkspaceId.value, taskId)
+}
+
+async function handleDownload(task) {
+  if (!selectedWorkspaceId.value) return
+  const filename = task.submission_file_name || 'submission-file'
+  await taskStore.downloadSubmission(selectedWorkspaceId.value, task.id, filename)
 }
 </script>
