@@ -14,7 +14,7 @@ from apps.workspaces.models import WorkspaceMember
 from apps.workspaces.permissions import IsWorkspaceManager
 
 from .models import Task, Workspace
-from .serializers import TaskSerializer
+from .serializers import TaskSerializer, submission_file_exists
 
 ALLOWED_TRANSITIONS = {
     "in_progress": ["in_review"],
@@ -169,10 +169,14 @@ class TaskViewSet(ViewSet):
         self.ensure_workspace_member(workspace_id, request.user)
         task = self.get_task(workspace_id, pk)
 
-        if not task.submission_file:
+        if not submission_file_exists(task):
             raise NotFound("Task này chưa có file nộp bài")
 
-        task.submission_file.open("rb")
+        try:
+            task.submission_file.open("rb")
+        except FileNotFoundError as exc:
+            raise NotFound("File đã không còn tồn tại trên máy chủ, vui lòng tải lên lại") from exc
+
         return FileResponse(
             task.submission_file,
             as_attachment=True,

@@ -277,6 +277,25 @@ class TestTaskWorkflow:
         assert "submission.docx" in response.headers["Content-Disposition"]
 
     @pytest.mark.django_db
+    def test_missing_submission_file_is_hidden_and_download_returns_not_found(self, api_client, workspace, manager_user, member_user, assigned_task):
+        assigned_task.submission_file.name = "task_submissions/missing.docx"
+        assigned_task.save(update_fields=["submission_file", "updated_at"])
+
+        detail_response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/",
+            **auth_headers(manager_user),
+        )
+        download_response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/submission/download/",
+            **auth_headers(manager_user),
+        )
+
+        assert detail_response.status_code == status.HTTP_200_OK
+        assert detail_response.data["submission_file_name"] == ""
+        assert detail_response.data["submission_file_url"] == ""
+        assert download_response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.django_db
     def test_other_member_cannot_submit_task_they_do_not_own(self, api_client, workspace, second_member_user, second_member_membership, assigned_task):
         response = api_client.patch(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/status/",

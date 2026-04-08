@@ -8,6 +8,15 @@ from .models import Task
 ALLOWED_SUBMISSION_EXTENSIONS = {".doc", ".docx", ".xls", ".xlsx"}
 
 
+def submission_file_exists(task):
+    if not task.submission_file:
+        return False
+    try:
+        return task.submission_file.storage.exists(task.submission_file.name)
+    except Exception:
+        return False
+
+
 class TaskSerializer(serializers.ModelSerializer):
     assign_to_username = serializers.CharField(source="assign_to.username", read_only=True)
     assign_from_username = serializers.CharField(source="assign_from.username", read_only=True)
@@ -64,14 +73,14 @@ class TaskSerializer(serializers.ModelSerializer):
         return value
 
     def get_submission_file_url(self, obj):
-        if not obj.submission_file:
+        if not submission_file_exists(obj):
             return ""
         request = self.context.get("request")
         url = obj.submission_file.url
         return request.build_absolute_uri(url) if request else url
 
     def get_submission_file_name(self, obj):
-        if not obj.submission_file:
+        if not submission_file_exists(obj):
             return ""
         return obj.submission_file.name.rsplit("/", 1)[-1]
 
