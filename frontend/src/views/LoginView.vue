@@ -1,24 +1,24 @@
 ﻿<template>
   <div class="w-full max-w-[470px] rounded-[30px] bg-white px-8 py-10 shadow-[0_30px_120px_rgba(31,56,128,0.25)] sm:px-10">
     <div class="text-center">
-      <h1 class="text-4xl font-bold text-slate-900">Login to WorkflowX</h1>
+      <h1 class="text-4xl font-bold text-slate-900">Đăng nhập WorkflowX</h1>
       <p class="mt-3 text-sm text-slate-500">Dùng email và mật khẩu để truy cập dashboard workspace của bạn.</p>
     </div>
 
     <form class="mt-10 space-y-6" @submit.prevent="handleSubmit">
       <label class="block text-sm font-medium text-slate-600">
-        Email address
+        Địa chỉ email
         <input v-model="form.email" type="email" required class="auth-input mt-3" placeholder="member@workflowx.app" />
       </label>
 
       <label class="block text-sm font-medium text-slate-600">
-        Password
+        Mật khẩu
         <input v-model="form.password" type="password" required class="auth-input mt-3" placeholder="••••••••" />
       </label>
 
       <p v-if="errorMessage" class="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{{ errorMessage }}</p>
 
-      <BaseButton type="submit" size="lg" block :loading="authStore.loading">Sign In</BaseButton>
+      <BaseButton type="submit" size="lg" block :loading="authStore.loading">Đăng nhập</BaseButton>
     </form>
 
     <p class="mt-6 text-center text-sm text-slate-500">

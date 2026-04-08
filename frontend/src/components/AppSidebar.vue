@@ -28,7 +28,7 @@
 
         <div class="shrink-0 border-t border-slate-100 px-6 py-5">
           <div class="rounded-[24px] bg-[#f4f7ff] p-4">
-            <p class="text-xs uppercase tracking-[0.25em] text-slate-400">Signed in as</p>
+            <p class="text-xs uppercase tracking-[0.25em] text-slate-400">Đang đăng nhập</p>
             <p class="mt-3 break-all text-base font-semibold leading-7 text-slate-900">{{ authStore.user?.email }}</p>
             <p class="mt-1 text-sm leading-6 text-slate-500">{{ managerHint }}</p>
           </div>
@@ -53,9 +53,9 @@ const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', match: '/dashboard', icon: '◫' },
+  { to: '/dashboard', label: 'Bảng điều khiển', match: '/dashboard', icon: '◫' },
   { to: '/workspaces', label: 'Workspace', match: '/workspaces', icon: '▣' },
-  { to: '/tasks', label: 'Task', match: '/tasks', icon: '◩' },
+  { to: '/tasks', label: 'Công việc', match: '/tasks', icon: '◩' },
 ]
 
 const sidebarClasses = computed(() => [
@@ -63,7 +63,7 @@ const sidebarClasses = computed(() => [
   props.open ? 'translate-x-0' : '-translate-x-full',
 ].join(' '))
 
-const managerHint = computed(() => workspaceStore.createdWorkspaceCount > 0 ? 'Manager view available' : 'Member workspace access')
+const managerHint = computed(() => workspaceStore.createdWorkspaceCount > 0 ? 'Có quyền quản lý workspace' : 'Đang ở chế độ thành viên')
 
 function isActive(match) {
   return route.path.startsWith(match)

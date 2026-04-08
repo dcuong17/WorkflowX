@@ -1,29 +1,29 @@
 ﻿<template>
   <div class="w-full max-w-[500px] rounded-[30px] bg-white px-8 py-10 shadow-[0_30px_120px_rgba(31,56,128,0.25)] sm:px-10">
     <div class="text-center">
-      <h1 class="text-4xl font-bold text-slate-900">Create Workspace Account</h1>
+      <h1 class="text-4xl font-bold text-slate-900">Tạo tài khoản Workspace</h1>
       <p class="mt-3 text-sm text-slate-500">Đăng ký nhanh để tạo workspace riêng hoặc tham gia workspace được mời.</p>
     </div>
 
     <form class="mt-10 space-y-6" @submit.prevent="handleSubmit">
       <label class="block text-sm font-medium text-slate-600">
-        Email address
+        Địa chỉ email
         <input v-model="form.email" type="email" required class="auth-input mt-3" placeholder="manager@workflowx.app" />
       </label>
 
       <label class="block text-sm font-medium text-slate-600">
-        Password
+        Mật khẩu
         <input v-model="form.password" type="password" required class="auth-input mt-3" placeholder="Ít nhất 8 ký tự" />
       </label>
 
       <label class="block text-sm font-medium text-slate-600">
-        Confirm password
+        Xác nhận mật khẩu
         <input v-model="form.password_confirm" type="password" required class="auth-input mt-3" placeholder="Nhập lại mật khẩu" />
       </label>
 
       <p v-if="errorMessage" class="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{{ errorMessage }}</p>
 
-      <BaseButton type="submit" size="lg" block :loading="authStore.loading">Sign Up</BaseButton>
+      <BaseButton type="submit" size="lg" block :loading="authStore.loading">Đăng ký</BaseButton>
     </form>
 
     <p class="mt-6 text-center text-sm text-slate-500">

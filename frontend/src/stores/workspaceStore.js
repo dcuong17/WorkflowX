@@ -14,6 +14,7 @@ export const useWorkspaceStore = defineStore('workspaceStore', () => {
   const currentWorkspace = ref(null)
   const currentWorkspaceId = ref('')
   const members = ref([])
+  const memberDirectory = ref({})
   const availableUsers = ref([])
   const loading = ref(false)
 
@@ -48,6 +49,14 @@ export const useWorkspaceStore = defineStore('workspaceStore', () => {
   async function fetchMembers(workspaceId) {
     const { data } = await apiClient.get(`/workspace/${workspaceId}/members/`)
     members.value = normalizeCollection(data)
+    const directoryPatch = {}
+    for (const member of members.value) {
+      directoryPatch[member.user] = member.user_username || member.user_email || member.user
+    }
+    memberDirectory.value = {
+      ...memberDirectory.value,
+      ...directoryPatch,
+    }
     return members.value
   }
 
@@ -56,6 +65,14 @@ export const useWorkspaceStore = defineStore('workspaceStore', () => {
       params: { workspace_id: workspaceId },
     })
     availableUsers.value = normalizeCollection(data)
+    const directoryPatch = {}
+    for (const user of availableUsers.value) {
+      directoryPatch[user.id] = user.username || user.email || user.id
+    }
+    memberDirectory.value = {
+      ...memberDirectory.value,
+      ...directoryPatch,
+    }
     return availableUsers.value
   }
 
@@ -116,6 +133,7 @@ export const useWorkspaceStore = defineStore('workspaceStore', () => {
     currentWorkspace,
     currentWorkspaceId,
     members,
+    memberDirectory,
     availableUsers,
     loading,
     createdWorkspaceCount,

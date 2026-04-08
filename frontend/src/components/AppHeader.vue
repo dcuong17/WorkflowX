@@ -7,7 +7,7 @@
         </button>
         <div class="min-w-0">
           <p class="text-[11px] uppercase tracking-[0.3em] text-slate-400">WorkflowX</p>
-          <h1 class="truncate text-2xl font-semibold leading-tight text-slate-900">{{ route.meta.title ?? 'Dashboard' }}</h1>
+          <h1 class="truncate text-2xl font-semibold leading-tight text-slate-900">{{ route.meta.title ?? 'Bảng điều khiển' }}</h1>
           <p v-if="route.meta.subtitle" class="truncate text-sm leading-6 text-slate-500">{{ route.meta.subtitle }}</p>
         </div>
       </div>
@@ -19,7 +19,7 @@
             v-model="uiStore.searchQuery"
             type="text"
             class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400"
-            placeholder="Search workspace or task"
+            placeholder="Tìm kiếm workspace hoặc task"
           />
           <button
             v-if="uiStore.hasSearch"
@@ -42,18 +42,18 @@
             </div>
             <div class="min-w-0 flex-1 pr-1 text-left">
               <p class="truncate text-sm font-medium leading-5 text-slate-900">{{ authStore.user?.email }}</p>
-              <p class="text-xs leading-5 text-slate-500">{{ workspaceStore.createdWorkspaceCount > 0 ? 'Manager' : 'Member' }}</p>
+              <p class="text-xs leading-5 text-slate-500">{{ workspaceStore.createdWorkspaceCount > 0 ? 'Quản lý' : 'Thành viên' }}</p>
             </div>
             <span class="text-xs text-slate-400">{{ menuOpen ? '▲' : '▼' }}</span>
           </button>
 
           <div v-if="menuOpen" class="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-56 rounded-[22px] border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.12)]">
             <button type="button" class="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-[#f6f9ff]" @click="goToProfile">
-              <span>View profile</span>
+              <span>Xem hồ sơ</span>
               <span>→</span>
             </button>
             <button type="button" class="mt-1 flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm text-[#d64b4b] transition hover:bg-[#fff5f5]" @click="handleLogout">
-              <span>Logout</span>
+              <span>Đăng xuất</span>
               <span>↗</span>
             </button>
           </div>
