@@ -5,6 +5,8 @@ import { apiClient } from '../plugins/axios'
 import { useToastStore } from './toastStore'
 import { useWorkspaceStore } from './workspaceStore'
 
+const ARCHIVE_STORAGE_PREFIX = 'workflowx_deleted_task_activity_'
+
 function normalizeCollection(payload) {
   return Array.isArray(payload) ? payload : (payload?.results ?? [])
 }
@@ -14,8 +16,26 @@ export const useTaskStore = defineStore('taskStore', () => {
   const tasksByWorkspace = ref({})
   const currentTask = ref(null)
   const loading = ref(false)
+  const deletedWorkspaceActivity = ref(loadDeletedWorkspaceActivity())
 
   const allTasks = computed(() => Object.values(tasksByWorkspace.value).flat())
+  const combinedRecentTasks = computed(() => {
+    const archived = deletedWorkspaceActivity.value.map((task) => ({
+      ...task,
+      isArchivedWorkspaceActivity: true,
+    }))
+
+    const active = allTasks.value.map((task) => ({
+      ...task,
+      isArchivedWorkspaceActivity: false,
+    }))
+
+    return [...active, ...archived].sort((left, right) => {
+      const leftTime = new Date(left.updated_at || left.created_at || 0).getTime()
+      const rightTime = new Date(right.updated_at || right.created_at || 0).getTime()
+      return rightTime - leftTime
+    })
+  })
 
   function tasksForWorkspace(workspaceId) {
     return tasksByWorkspace.value[workspaceId] ?? []
@@ -38,6 +58,7 @@ export const useTaskStore = defineStore('taskStore', () => {
   async function fetchDashboardTasks(workspaces) {
     const ids = [...new Set(workspaces.map((workspace) => workspace.workspace_id))]
     await Promise.all(ids.map((workspaceId) => fetchTasks(workspaceId)))
+    pruneDeletedWorkspaceActivity(ids)
   }
 
   async function fetchTask(workspaceId, taskId) {
@@ -51,7 +72,7 @@ export const useTaskStore = defineStore('taskStore', () => {
     const { data } = await apiClient.post(`/workspace/${workspaceId}/tasks/`, payload)
     upsertTask(workspaceId, data)
     await syncWorkspaceSnapshots(workspaceId)
-    toastStore.success('Task created', `Task "${data.title}" đã được tạo.`)
+    toastStore.success('Tạo task thành công', `Task "${data.title}" đã được tạo.`)
     return data
   }
 
@@ -60,7 +81,7 @@ export const useTaskStore = defineStore('taskStore', () => {
     currentTask.value = data
     upsertTask(workspaceId, data)
     await syncWorkspaceSnapshots(workspaceId)
-    toastStore.success('Task updated', `Task "${data.title}" đã được cập nhật.`)
+    toastStore.success('Cập nhật task thành công', `Task "${data.title}" đã được cập nhật.`)
     return data
   }
 
@@ -72,7 +93,7 @@ export const useTaskStore = defineStore('taskStore', () => {
       [workspaceId]: tasksForWorkspace(workspaceId).filter((task) => task.id !== taskId),
     }
     await syncWorkspaceSnapshots(workspaceId)
-    toastStore.success('Task deleted', `"${taskTitle}" đã được xóa.`)
+    toastStore.success('Xóa task thành công', `"${taskTitle}" đã được xóa.`)
   }
 
   async function submitTask(workspaceId, taskId) {
@@ -88,7 +109,7 @@ export const useTaskStore = defineStore('taskStore', () => {
     })
     currentTask.value = data
     upsertTask(workspaceId, data)
-    toastStore.success('File uploaded', 'File submission đã được tải lên thành công.')
+    toastStore.success('Tải file thành công', 'File bài nộp đã được tải lên thành công.')
     return data
   }
 
@@ -125,7 +146,7 @@ export const useTaskStore = defineStore('taskStore', () => {
       done: 'Task đã được phê duyệt hoàn thành.',
       in_progress: 'Task đã được trả lại trạng thái đang thực hiện.',
     }
-    toastStore.success('Task status updated', messages[status] || 'Trạng thái task đã được cập nhật.')
+    toastStore.success('Cập nhật trạng thái task', messages[status] || 'Trạng thái task đã được cập nhật.')
     return data
   }
 
@@ -145,6 +166,50 @@ export const useTaskStore = defineStore('taskStore', () => {
     }
   }
 
+  function archiveDeletedWorkspaceTasks(workspaceId, workspaceName) {
+    const snapshot = tasksForWorkspace(workspaceId)
+    if (!snapshot.length) {
+      clearWorkspaceTasks(workspaceId)
+      return
+    }
+
+    const archived = snapshot.map((task) => ({
+      ...task,
+      workspace: workspaceId,
+      workspace_name_snapshot: workspaceName,
+      workspace_missing: true,
+      archived_at: new Date().toISOString(),
+    }))
+
+    const merged = [...archived, ...deletedWorkspaceActivity.value.filter((task) => task.workspace !== workspaceId)]
+      .reduce((collection, task) => {
+        if (!collection.some((item) => item.id === task.id)) {
+          collection.push(task)
+        }
+        return collection
+      }, [])
+
+    deletedWorkspaceActivity.value = merged
+    persistDeletedWorkspaceActivity()
+    clearWorkspaceTasks(workspaceId)
+  }
+
+  function pruneDeletedWorkspaceActivity(activeWorkspaceIds = []) {
+    const activeSet = new Set(activeWorkspaceIds)
+    deletedWorkspaceActivity.value = deletedWorkspaceActivity.value.filter((task) => !activeSet.has(task.workspace))
+    persistDeletedWorkspaceActivity()
+  }
+
+  function clearWorkspaceTasks(workspaceId) {
+    const nextState = { ...tasksByWorkspace.value }
+    delete nextState[workspaceId]
+    tasksByWorkspace.value = nextState
+
+    if (currentTask.value?.workspace === workspaceId) {
+      currentTask.value = null
+    }
+  }
+
   async function syncWorkspaceSnapshots(workspaceId) {
     const workspaceStore = useWorkspaceStore()
     await workspaceStore.fetchWorkspaces()
@@ -153,11 +218,36 @@ export const useTaskStore = defineStore('taskStore', () => {
     }
   }
 
+  function persistDeletedWorkspaceActivity() {
+    const key = deletedWorkspaceStorageKey()
+    if (!key) return
+    localStorage.setItem(key, JSON.stringify(deletedWorkspaceActivity.value))
+  }
+
+  function loadDeletedWorkspaceActivity() {
+    const key = deletedWorkspaceStorageKey()
+    if (!key) return []
+
+    try {
+      return JSON.parse(localStorage.getItem(key) ?? '[]')
+    } catch {
+      localStorage.removeItem(key)
+      return []
+    }
+  }
+
+  function deletedWorkspaceStorageKey() {
+    const user = JSON.parse(localStorage.getItem('workflowx_user') ?? 'null')
+    return user?.id ? `${ARCHIVE_STORAGE_PREFIX}${user.id}` : ''
+  }
+
   return {
     tasksByWorkspace,
     currentTask,
     loading,
+    deletedWorkspaceActivity,
     allTasks,
+    combinedRecentTasks,
     tasksForWorkspace,
     fetchTasks,
     fetchDashboardTasks,
@@ -170,5 +260,7 @@ export const useTaskStore = defineStore('taskStore', () => {
     submitTask,
     approveTask,
     rejectTask,
+    archiveDeletedWorkspaceTasks,
+    clearWorkspaceTasks,
   }
 })

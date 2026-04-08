@@ -174,6 +174,23 @@ class TestTaskAccessAndManagement:
         assert detail_response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.django_db
+    def test_deleted_workspace_hides_tasks_and_returns_not_found(self, api_client, workspace, manager_user, member_user, member_membership, assigned_task):
+        workspace.is_deleted = True
+        workspace.save(update_fields=["is_deleted", "updated_at"])
+
+        list_response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/",
+            **auth_headers(member_user),
+        )
+        detail_response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/",
+            **auth_headers(manager_user),
+        )
+
+        assert list_response.status_code == status.HTTP_404_NOT_FOUND
+        assert detail_response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.django_db
     def test_manager_can_update_task_details_but_not_bypass_status_workflow(self, api_client, workspace, manager_user, second_member_user, second_member_membership, assigned_task):
         response = api_client.put(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/",

@@ -168,6 +168,7 @@ import StatCard from '../components/StatCard.vue'
 import TaskStatusBadge from '../components/TaskStatusBadge.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskStore } from '../stores/taskStore'
+import { useToastStore } from '../stores/toastStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { matchesSearch } from '../utils/search'
@@ -175,6 +176,7 @@ import { matchesSearch } from '../utils/search'
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const taskStore = useTaskStore()
+const toastStore = useToastStore()
 const uiStore = useUiStore()
 const router = useRouter()
 
@@ -223,7 +225,17 @@ const filteredWorkspaces = computed(() => workspaceStore.workspaces.filter((work
 
 const createdWorkspaces = computed(() => filteredWorkspaces.value.filter((workspace) => workspace.created_by === authStore.user?.id))
 const joinedWorkspaces = computed(() => filteredWorkspaces.value.filter((workspace) => workspace.created_by !== authStore.user?.id))
-const recentTasks = computed(() => filteredTasks.value.slice(0, 6))
+const recentTasks = computed(() => taskStore.combinedRecentTasks
+  .filter((task) => matchesSearch([
+    task.title,
+    task.description,
+    task.status,
+    task.assign_to,
+    task.assign_to_username,
+    displayUser(task.assign_to_username, task.assign_to, ''),
+    workspaceName(task.workspace, task.workspace_name_snapshot),
+  ], uiStore.normalizedSearch))
+  .slice(0, 6))
 const workspaceHighlights = computed(() => filteredWorkspaces.value.slice(0, 6))
 const myAssignedTasks = computed(() => filteredTasks.value.filter((task) => task.assign_to === authStore.user?.id))
 
@@ -295,6 +307,10 @@ function openCardModal(type) {
 
 function openTask(task) {
   activeModalType.value = ''
+  if (task.workspace_missing || task.isArchivedWorkspaceActivity) {
+    toastStore.warning('Workspace không còn tồn tại', `Workspace gốc của task "${task.title}" đã bị xóa khỏi hệ thống.`)
+    return
+  }
   router.push(`/workspaces/${task.workspace}/tasks/${task.id}`)
 }
 
@@ -303,8 +319,8 @@ function openWorkspace(workspaceId) {
   router.push(`/workspaces/${workspaceId}`)
 }
 
-function workspaceName(workspaceId) {
-  return workspaceStore.workspaces.find((workspace) => workspace.workspace_id === workspaceId)?.workspace_name || workspaceId
+function workspaceName(workspaceId, fallbackName = '') {
+  return workspaceStore.workspaces.find((workspace) => workspace.workspace_id === workspaceId)?.workspace_name || fallbackName || workspaceId
 }
 
 function displayUser(username, fallbackId, empty = 'Không xác định') {

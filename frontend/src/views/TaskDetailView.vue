@@ -63,6 +63,7 @@ import BaseCard from '../components/BaseCard.vue'
 import TaskStatusBadge from '../components/TaskStatusBadge.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskStore } from '../stores/taskStore'
+import { useToastStore } from '../stores/toastStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 const props = defineProps({ id: String, task_id: String })
@@ -70,17 +71,26 @@ const router = useRouter()
 const authStore = useAuthStore()
 const taskStore = useTaskStore()
 const workspaceStore = useWorkspaceStore()
+const toastStore = useToastStore()
 const selectedFile = ref(null)
 const submissionInput = ref(null)
 const uploadError = ref('')
 const uploading = ref(false)
 
 onMounted(async () => {
-  await Promise.all([
-    workspaceStore.fetchWorkspace(props.id),
-    workspaceStore.fetchMembers(props.id),
-    taskStore.fetchTask(props.id, props.task_id),
-  ])
+  try {
+    await Promise.all([
+      workspaceStore.fetchWorkspace(props.id),
+      workspaceStore.fetchMembers(props.id),
+      taskStore.fetchTask(props.id, props.task_id),
+    ])
+  } catch (error) {
+    const message = error.response?.status === 404
+      ? 'Workspace hoặc task này không còn tồn tại.'
+      : 'Không thể tải chi tiết task.'
+    toastStore.warning('Không thể mở task', message)
+    router.push('/dashboard')
+  }
 })
 
 const isManager = computed(() => workspaceStore.currentWorkspace?.created_by === authStore.user?.id)

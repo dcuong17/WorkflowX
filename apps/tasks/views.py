@@ -32,9 +32,17 @@ class TaskViewSet(ViewSet):
         return Task.objects.filter(
             is_deleted=False,
             workspace=self.kwargs["workspace_id"],
+            workspace__is_deleted=False,
         ).select_related("assign_to", "assign_from")
 
+    def get_workspace(self, workspace_id):
+        try:
+            return Workspace.objects.get(pk=workspace_id, is_deleted=False)
+        except Workspace.DoesNotExist:
+            raise NotFound("Workspace không tồn tại")
+
     def ensure_workspace_member(self, workspace_id, user):
+        self.get_workspace(workspace_id)
         try:
             return WorkspaceMember.objects.get(workspace_id=workspace_id, user=user)
         except WorkspaceMember.DoesNotExist:
@@ -42,7 +50,12 @@ class TaskViewSet(ViewSet):
 
     def get_task(self, workspace_id, pk):
         try:
-            return Task.objects.get(workspace=workspace_id, pk=pk, is_deleted=False)
+            return Task.objects.get(
+                workspace=workspace_id,
+                workspace__is_deleted=False,
+                pk=pk,
+                is_deleted=False,
+            )
         except Task.DoesNotExist:
             raise NotFound("Không tồn tại task này")
 
@@ -62,7 +75,7 @@ class TaskViewSet(ViewSet):
             context={"workspace_id": self.kwargs["workspace_id"], "request": request},
         )
         if serializer.is_valid():
-            workspace = Workspace.objects.get(pk=self.kwargs["workspace_id"])
+            workspace = self.get_workspace(self.kwargs["workspace_id"])
             serializer.save(workspace=workspace, assign_from=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

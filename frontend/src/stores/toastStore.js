@@ -21,6 +21,14 @@ export const useToastStore = defineStore('toastStore', () => {
     return push({ title, message, tone: 'success' })
   }
 
+  function warning(title, message = '') {
+    return push({ title, message, tone: 'warning', duration: 4200 })
+  }
+
+  function error(title, message = '') {
+    return push({ title, message, tone: 'error', duration: 4800 })
+  }
+
   function dismiss(id) {
     toasts.value = toasts.value.filter((toast) => toast.id !== id)
   }
@@ -29,6 +37,8 @@ export const useToastStore = defineStore('toastStore', () => {
     toasts,
     push,
     success,
+    warning,
+    error,
     dismiss,
   }
 })

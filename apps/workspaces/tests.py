@@ -154,6 +154,15 @@ class TestWorkspaceManagement:
 
     @pytest.mark.django_db
     def test_manager_can_soft_delete_workspace(self, api_client, workspace, owner):
+        member = CustomUser.objects.create_user("delete-target@example.com", "securepass123")
+        WorkspaceMember.objects.create(workspace=workspace, user=member, role="member")
+        task = Task.objects.create(
+            workspace=workspace,
+            title="Workspace linked task",
+            assign_from=owner,
+            assign_to=member,
+        )
+
         response = api_client.delete(
             f"/api/v1/workspace/{workspace.workspace_id}/",
             **auth_headers(owner),
@@ -161,7 +170,9 @@ class TestWorkspaceManagement:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         workspace.refresh_from_db()
+        task.refresh_from_db()
         assert workspace.is_deleted is True
+        assert task.is_deleted is True
 
 
 class TestWorkspaceMembers:

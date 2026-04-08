@@ -55,8 +55,8 @@
               </div>
               <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-500">{{ task.description || 'Task chưa có mô tả.' }}</p>
               <div class="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
-                <span class="rounded-full bg-slate-100 px-3 py-1">Assignee: {{ task.assign_to_username || task.assign_to || 'Unassigned' }}</span>
-                <span class="rounded-full bg-slate-100 px-3 py-1">Deadline: {{ task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB') : 'No deadline' }}</span>
+                <span class="rounded-full bg-slate-100 px-3 py-1">Người nhận: {{ displayUser(task.assign_to_username, task.assign_to, 'Chưa giao') }}</span>
+                <span class="rounded-full bg-slate-100 px-3 py-1">Hạn chót: {{ task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN') : 'Không có hạn chót' }}</span>
               </div>
             </div>
 
@@ -129,6 +129,7 @@ import ModalShell from '../components/ModalShell.vue'
 import TaskStatusBadge from '../components/TaskStatusBadge.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskStore } from '../stores/taskStore'
+import { useToastStore } from '../stores/toastStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { matchesSearch } from '../utils/search'
@@ -138,6 +139,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const taskStore = useTaskStore()
+const toastStore = useToastStore()
 const uiStore = useUiStore()
 
 const showAddMemberModal = ref(false)
@@ -181,7 +183,15 @@ const selectableUsers = computed(() => workspaceStore.availableUsers.filter((use
 const selectedCandidate = computed(() => selectableUsers.value.find((user) => user.id === memberForm.user) ?? null)
 
 async function refreshWorkspace() {
-  await Promise.all([workspaceStore.fetchWorkspace(props.id), workspaceStore.fetchMembers(props.id), taskStore.fetchTasks(props.id)])
+  try {
+    await Promise.all([workspaceStore.fetchWorkspace(props.id), workspaceStore.fetchMembers(props.id), taskStore.fetchTasks(props.id)])
+  } catch (error) {
+    const message = error.response?.status === 404
+      ? 'Workspace này không còn tồn tại.'
+      : 'Không thể tải dữ liệu workspace.'
+    toastStore.warning('Không thể mở workspace', message)
+    router.push('/workspaces')
+  }
 }
 
 const canSubmit = (task) => !isManager.value && task.status === 'in_progress' && task.assign_to === authStore.user?.id && Boolean(task.submission_file_name || task.submission_file_url)
@@ -261,6 +271,14 @@ async function handleUpdateWorkspace() {
 async function handleDeleteWorkspace() {
   await workspaceStore.deleteWorkspace(props.id)
   router.push('/workspaces')
+}
+
+function displayUser(username, fallbackId, empty = 'Không xác định') {
+  if (username) return username
+  if (fallbackId === authStore.user?.id) {
+    return authStore.user?.username || fallbackId || empty
+  }
+  return workspaceStore.memberDirectory[fallbackId] || fallbackId || empty
 }
 
 async function handleDeleteTask(taskId) { await taskStore.deleteTask(props.id, taskId) }
