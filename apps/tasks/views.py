@@ -1,4 +1,6 @@
 ﻿from rest_framework import status
+from django.http import FileResponse
+from django.utils import timezone
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -160,4 +162,19 @@ class TaskViewSet(ViewSet):
             serializer.save(submitted_at=None)
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-from django.utils import timezone
+
+    @extend_schema(summary="Download task submission file")
+    @action(methods=["get"], detail=True, url_path="submission/download")
+    def download_submission(self, request, workspace_id=None, pk=None):
+        self.ensure_workspace_member(workspace_id, request.user)
+        task = self.get_task(workspace_id, pk)
+
+        if not task.submission_file:
+            raise NotFound("Task này chưa có file nộp bài")
+
+        task.submission_file.open("rb")
+        return FileResponse(
+            task.submission_file,
+            as_attachment=True,
+            filename=task.submission_file.name.rsplit("/", 1)[-1],
+        )

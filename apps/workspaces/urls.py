@@ -33,6 +33,11 @@ urlpatterns = [
         name="task-submission",
     ),
     path(
+        "<uuid:workspace_id>/tasks/<uuid:pk>/submission/download/",
+        TaskViewSet.as_view({"get": "download_submission"}),
+        name="task-submission-download",
+    ),
+    path(
         "<uuid:workspace_id>/members/",
         WorkspaceMemberViewSet.as_view(
             {

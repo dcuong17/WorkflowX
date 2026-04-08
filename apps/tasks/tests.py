@@ -259,6 +259,24 @@ class TestTaskWorkflow:
         assert "submission_file" in response.data
 
     @pytest.mark.django_db
+    def test_workspace_member_can_download_submission_file(self, api_client, workspace, manager_user, member_user, assigned_task):
+        assigned_task.submission_file = SimpleUploadedFile(
+            "submission.docx",
+            b"demo task content",
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        assigned_task.save(update_fields=["submission_file", "updated_at"])
+
+        response = api_client.get(
+            f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/submission/download/",
+            **auth_headers(manager_user),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "attachment" in response.headers["Content-Disposition"]
+        assert "submission.docx" in response.headers["Content-Disposition"]
+
+    @pytest.mark.django_db
     def test_other_member_cannot_submit_task_they_do_not_own(self, api_client, workspace, second_member_user, second_member_membership, assigned_task):
         response = api_client.patch(
             f"/api/v1/workspace/{workspace.workspace_id}/tasks/{assigned_task.id}/status/",

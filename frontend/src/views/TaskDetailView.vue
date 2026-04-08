@@ -30,9 +30,9 @@
               {{ taskStore.currentTask.submission_file_name || 'Chưa có file đính kèm' }}
             </p>
           </div>
-          <a v-if="taskStore.currentTask.submission_file_url" :href="taskStore.currentTask.submission_file_url" target="_blank" rel="noreferrer" class="inline-flex items-center rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+          <button v-if="taskStore.currentTask.submission_file_name" type="button" @click="handleDownload" class="inline-flex items-center rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
             View file
-          </a>
+          </button>
         </div>
 
         <form v-if="canUploadSubmission" class="mt-5 space-y-3" @submit.prevent="handleUpload">
@@ -107,5 +107,10 @@ async function handleUpload() {
   } finally {
     uploading.value = false
   }
+}
+
+async function handleDownload() {
+  const filename = taskStore.currentTask?.submission_file_name || 'submission-file'
+  await taskStore.downloadSubmission(id, task_id, filename)
 }
 </script>

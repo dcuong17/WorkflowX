@@ -92,6 +92,21 @@ export const useTaskStore = defineStore('taskStore', () => {
     return data
   }
 
+  async function downloadSubmission(workspaceId, taskId, filename = 'submission-file') {
+    const response = await apiClient.get(`/workspace/${workspaceId}/tasks/${taskId}/submission/download/`, {
+      responseType: 'blob',
+    })
+
+    const downloadUrl = window.URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(downloadUrl)
+  }
+
   async function approveTask(workspaceId, taskId) {
     return patchTaskStatus(workspaceId, taskId, 'done')
   }
@@ -151,6 +166,7 @@ export const useTaskStore = defineStore('taskStore', () => {
     updateTask,
     deleteTask,
     uploadSubmission,
+    downloadSubmission,
     submitTask,
     approveTask,
     rejectTask,
