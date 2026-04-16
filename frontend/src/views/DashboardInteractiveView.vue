@@ -1,11 +1,11 @@
 ﻿<template>
   <div class="space-y-6">
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <section class="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-5 xl:auto-rows-fr">
       <button
         v-for="card in statCards"
         :key="card.label"
         type="button"
-        class="text-left transition hover:-translate-y-0.5"
+        class="flex h-full w-full self-stretch text-left transition hover:-translate-y-0.5"
         @click="openCardModal(card.type)"
       >
         <StatCard :label="card.label" :value="card.value" :helper="card.helper" :tone="card.tone">

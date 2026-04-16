@@ -1,12 +1,12 @@
 ﻿<template>
-  <BaseCard>
-    <div class="flex items-start justify-between gap-4">
-      <div>
+  <BaseCard class="h-full min-h-[146px] w-full">
+    <div class="flex h-full items-start justify-between gap-4">
+      <div class="flex min-h-[90px] flex-1 flex-col">
         <p class="text-sm text-slate-400">{{ label }}</p>
         <p class="mt-2 text-3xl font-semibold text-slate-900">{{ value }}</p>
-        <p class="mt-3 text-sm" :class="trendColor">{{ helper }}</p>
+        <p class="mt-auto pt-3 text-sm" :class="trendColor">{{ helper }}</p>
       </div>
-      <div class="flex h-14 w-14 items-center justify-center rounded-2xl" :class="iconBg">
+      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl" :class="iconBg">
         <slot />
       </div>
     </div>
